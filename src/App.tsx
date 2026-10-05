@@ -5,6 +5,7 @@
  */
 import { Tag } from '@likho-ai/ui';
 import {
+  lastDays,
   useInsightsStatus,
   useRecordingFacets,
   useRecordingsWithInsights,
@@ -104,8 +105,11 @@ export default function App() {
   };
   const status = useInsightsStatus();
   const calls = useRecordingsWithInsights(filter, 100);
-  const campaigns = useRecordingFacets('campaign', bounds);
-  const agents = useRecordingFacets('agent', { ...bounds, campaign: campaign || undefined });
+  // The campaigns and agents to choose from come from the last two weeks (the dashboard's
+  // window), with their counts, so the lists are there even on a day without calls.
+  const fortnight = useMemo(() => lastDays(14), []);
+  const campaigns = useRecordingFacets('campaign', fortnight);
+  const agents = useRecordingFacets('agent', { ...fortnight, campaign: campaign || undefined });
   const items = useMemo(() => calls.data?.items ?? [], [calls.data]);
   const numbers = useMemo(() => summarise(items), [items]);
   const byAgent = useMemo(() => groupBy(items, 'agent'), [items]);
