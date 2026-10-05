@@ -13,6 +13,7 @@ import {
 } from '@likho-ai/web-sdk';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { Dashboard } from './components/Dashboard';
 import './app.css';
 
 const SENTIMENT: Record<string, string> = {
@@ -155,6 +156,9 @@ export default function App() {
         </label>
       </form>
 
+      <Dashboard facts={{ campaign: campaign || undefined, agent: agent || undefined }} />
+
+      <h2 className="text-xl font-bold">The day</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="The day in numbers">
         <Stat label="Calls" value={String(numbers.calls)} />
         <Stat label="Analysed" value={String(numbers.analysed)} />

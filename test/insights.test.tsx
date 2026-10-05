@@ -50,10 +50,110 @@ const call = (id: string, agent: string, campaign: string, made: ReturnType<type
   insights: made,
 });
 
+/** What likho-analytics answers for the last two weeks. */
+const analytics = {
+  AnalyticsOverview: () => ({
+    analyticsOverview: {
+      calls: 240,
+      transcribed: 230,
+      failed: 4,
+      minutes: 512.5,
+      realtimeFactor: 0.9,
+      analysed: 120,
+      score: 0.82,
+      sentiments: [
+        { key: 'positive', count: 80 },
+        { key: 'negative', count: 20 },
+        { key: 'neutral', count: 20 },
+      ],
+      languages: [
+        { key: 'hi', count: 200 },
+        { key: 'ur', count: 30 },
+      ],
+    },
+  }),
+  AnalyticsTimeseries: (v: Record<string, unknown>) => ({
+    analyticsTimeseries: [
+      { at: '2026-09-22T00:00:00.000Z', value: v.metric === 'score' ? 0.8 : 10 },
+      { at: '2026-09-23T00:00:00.000Z', value: v.metric === 'score' ? 0.9 : 20 },
+    ],
+  }),
+  AnalyticsBreakdown: (v: Record<string, unknown>) => ({
+    analyticsBreakdown:
+      v.by === 'agent'
+        ? [
+            {
+              key: 'asha',
+              calls: 150,
+              transcribed: 150,
+              minutes: 300,
+              analysed: 80,
+              score: 0.85,
+              negative: 10,
+            },
+            {
+              key: 'ravi',
+              calls: 90,
+              transcribed: 80,
+              minutes: 212.5,
+              analysed: 40,
+              score: 0.76,
+              negative: 10,
+            },
+          ]
+        : [
+            {
+              key: 'sale',
+              calls: 240,
+              transcribed: 230,
+              minutes: 512.5,
+              analysed: 120,
+              score: 0.82,
+              negative: 20,
+            },
+          ],
+  }),
+};
+
 describe('the insights page', () => {
+  it('shows the last two weeks in numbers, charts and tables', async () => {
+    const { client, calls } = fakeApi({
+      Me: () => ({ me: person }),
+      ...analytics,
+      InsightsStatus: () => ({
+        insightsStatus: { enabled: true, model: 'fake/one', formVersion: 'example-1' },
+      }),
+      RecordingsWithInsights: () => ({ recordings: { items: [], hasMore: false, endCursor: null } }),
+      RecordingFacets: () => ({ recordingFacets: [] }),
+    });
+    renderAt('/insights?campaign=sale', <App />, client);
+    const numbers = await screen.findByLabelText('The last 14 days in numbers');
+    await waitFor(() => expect(numbers).toHaveTextContent('Calls240'));
+    expect(numbers).toHaveTextContent('Transcribed2304 failed');
+    expect(numbers).toHaveTextContent('Minutes512.5');
+    expect(numbers).toHaveTextContent('Speed0.90×');
+    expect(numbers).toHaveTextContent('Average score82%');
+    expect(await screen.findByRole('img', { name: /Calls a day: 22\/9: 10, 23\/9: 20/ })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /QA score a day: 22\/9: 80%, 23\/9: 90%/ })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Languages: Hindi 87%, Urdu 13%' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Moods: Positive 67%, Negative 17%, Neutral 17%' }),
+    ).toBeInTheDocument();
+    const agents = within(await screen.findByRole('table', { name: 'Agents, last 14 days' }))
+      .getAllByRole('row')
+      .slice(1);
+    expect(agents[0]!.textContent).toMatch(/^asha\s*150\s*300\s*80\s*85%\s*10$/);
+    // The campaign from the address narrows the numbers too.
+    const asked = calls.find((c) => c.name === 'AnalyticsOverview')!.variables as {
+      facts: { campaign?: string };
+    };
+    expect(asked.facts).toEqual({ campaign: 'sale', agent: undefined });
+  });
+
   it('lists the day’s calls with their mood and score, and the numbers by agent and campaign', async () => {
     const { client, calls } = fakeApi({
       Me: () => ({ me: person }),
+      ...analytics,
       InsightsStatus: () => ({
         insightsStatus: { enabled: true, model: 'fake/one', formVersion: 'example-1' },
       }),
@@ -137,6 +237,7 @@ describe('the insights page', () => {
   it('says when insights are off, and when the day has no calls', async () => {
     const { client } = fakeApi({
       Me: () => ({ me: person }),
+      ...analytics,
       InsightsStatus: () => ({ insightsStatus: { enabled: false, model: '', formVersion: 'example-1' } }),
       RecordingsWithInsights: () => ({ recordings: { items: [], hasMore: false, endCursor: null } }),
       RecordingFacets: () => ({ recordingFacets: [] }),
