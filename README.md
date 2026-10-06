@@ -22,7 +22,7 @@ leaves the installation.
 
 ```bash
 pnpm install
-pnpm dev            # http://localhost:5178/mfe/insights/ on its own, against the gateway at 8080
+pnpm dev            # http://localhost:5278/mfe/insights/ on its own, against the gateway at 8080
 ```
 
 In the shell, the gateway proxies `/mfe/insights/` here (likho-infra's nginx) and the manifest
